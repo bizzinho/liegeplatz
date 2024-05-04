@@ -17,7 +17,7 @@ PWD = os.environ["PWD"]
 LENGTHS = tuple(range(120, 320, 20))
 
 
-def getKey():
+def getKey() -> Fernet:
     # get Fernet key
     with open("key.key", "rb") as f:
         KEY = Fernet(f.read())
@@ -25,7 +25,7 @@ def getKey():
     return KEY
 
 
-def readAndDecrypt(KEY=None):
+def readAndDecrypt(KEY: Fernet | None = None) -> pd.DataFrame:
 
     if KEY is None:
         KEY = getKey()
@@ -44,7 +44,7 @@ def readAndDecrypt(KEY=None):
     return df
 
 
-def encryptAndSave(df, KEY=None):
+def encryptAndSave(df: pd.DataFrame, KEY: Fernet | None = None):
 
     if KEY is None:
         KEY = getKey()
@@ -103,4 +103,4 @@ if __name__ == "__main__":
         f"liegeplatzData_{pd.Timestamp.now().date().isoformat()}.csv", index=False
     )
 
-    encryptAndSave(dfAll)
+    encryptAndSave(dfAll, KEY)
