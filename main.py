@@ -1,6 +1,10 @@
 from selenium import webdriver
+from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
 import os
+from io import StringIO
+import pandas as pd
 
 driver = webdriver.Firefox()
 driver.implicitly_wait(10)
@@ -12,6 +16,8 @@ PWD = os.environ["PWD"]
 # lengths to check
 LENGTHS = tuple(range(120, 320, 20))
 
+# get current table
+df = pd.read_csv("liegeplatzData.csv")
 
 userElem = driver.find_element(By.XPATH, "//input[@id='userInputField']")
 pwElem = driver.find_element(By.XPATH, "//input[@id='pwInputField']")
@@ -30,5 +36,9 @@ for l in LENGTHS:
     d.clear()
     d.send_keys(l)
     driver.find_element(By.XPATH, submitXPath).click()
+    element = WebDriverWait(driver, 20).until(
+        EC.visibility_of_element_located((By.XPATH, "//div[@class='stzh-table']"))
+    )
+    df_loc = pd.read_html(StringIO(driver.page_source))[0]
 
-    break
+    df = pd.concat((df, df_loc), ignore_index=True)
