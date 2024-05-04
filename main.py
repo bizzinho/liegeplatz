@@ -18,6 +18,12 @@ LENGTHS = tuple(range(120, 320, 20))
 
 
 def getKey() -> Fernet:
+    """Get Fernet key.
+
+    Key must be stored in 'key.key. in local folder.
+    Returns:
+        Fernet: The Fernet key used to de-/encrypt data.
+    """
     # get Fernet key
     with open("key.key", "rb") as f:
         KEY = Fernet(f.read())
@@ -26,7 +32,14 @@ def getKey() -> Fernet:
 
 
 def readAndDecrypt(KEY: Fernet | None = None) -> pd.DataFrame:
+    """Read and decrypt current dataset in 'liegePlatzData.encrypted'.
 
+    Args:
+        KEY (Fernet | None, optional): The Fernet key. Defaults to None.
+
+    Returns:
+        pd.DataFrame: The (unencrypted) complete dataset.
+    """
     if KEY is None:
         KEY = getKey()
 
@@ -45,7 +58,13 @@ def readAndDecrypt(KEY: Fernet | None = None) -> pd.DataFrame:
 
 
 def encryptAndSave(df: pd.DataFrame, KEY: Fernet | None = None):
+    """Encrypt dataframe and save to file.
 
+    Args:
+        df (pd.DataFrame): The dataframe to encrypt and save.
+        KEY (Fernet | None, optional): The Fernet key used for encryption.
+            Defaults to None.
+    """
     if KEY is None:
         KEY = getKey()
 
