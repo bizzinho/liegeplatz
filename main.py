@@ -3,42 +3,104 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 import os
-from io import StringIO
+from io import StringIO, BytesIO
 import pandas as pd
+from cryptography.fernet import Fernet
+import time
 
-driver = webdriver.Firefox()
-driver.implicitly_wait(10)
 
 URL = "https://www.stadt-zuerich.ch/appl/besys2-ew/hafen/warteliste"
-driver.get(URL)
+
 USER = os.environ["USER"]
 PWD = os.environ["PWD"]
 # lengths to check
 LENGTHS = tuple(range(120, 320, 20))
 
-# get current table
-df = pd.read_csv("liegeplatzData.csv")
 
-userElem = driver.find_element(By.XPATH, "//input[@id='userInputField']")
-pwElem = driver.find_element(By.XPATH, "//input[@id='pwInputField']")
+def getKey():
+    # get Fernet key
+    with open("key.key", "rb") as f:
+        KEY = Fernet(f.read())
 
-userElem.send_keys(USER)
-pwElem.send_keys(PWD)
+    return KEY
 
-# submit
-driver.find_element(By.XPATH, "//button[@type='submit']").click()
 
-# get data
-inputFieldXPath = "//input[@id='stzh-input-0']"
-submitXPath = "//button[contains(@class, 'stzh-button') and .//*[text()='Abfragen']]"
-for l in LENGTHS:
-    d = driver.find_element(By.XPATH, inputFieldXPath)
-    d.clear()
-    d.send_keys(l)
-    driver.find_element(By.XPATH, submitXPath).click()
-    element = WebDriverWait(driver, 20).until(
-        EC.visibility_of_element_located((By.XPATH, "//div[@class='stzh-table']"))
+def readAndDecrypt(KEY=None):
+
+    if KEY is None:
+        KEY = getKey()
+
+    # decrypt
+    try:
+        with open("liegePlatzData.encrypted", "rb") as f:
+            df = pd.read_csv(BytesIO(KEY.decrypt(f.read())))
+            for col in ["Anmeldung", "Zuteilung"]:
+                df[col] = pd.to_datetime(df[col], dayfirst=True)
+
+    except FileNotFoundError:
+        # return empy df
+        df = pd.DataFrame()
+
+    return df
+
+
+def encryptAndSave(df, KEY=None):
+
+    if KEY is None:
+        KEY = getKey()
+
+    # encrypt
+    with open("liegePlatzData.encrypted", "wb") as f:
+        f.write(KEY.encrypt(df.to_csv(index=False).encode()))
+
+
+if __name__ == "__main__":
+
+    KEY = getKey()
+
+    driver = webdriver.Firefox()
+    driver.implicitly_wait(10)
+    driver.get(URL)
+
+    userElem = driver.find_element(By.XPATH, "//input[@id='userInputField']")
+    pwElem = driver.find_element(By.XPATH, "//input[@id='pwInputField']")
+
+    userElem.send_keys(USER)
+    pwElem.send_keys(PWD)
+
+    # log in
+    driver.find_element(By.XPATH, "//button[@type='submit']").click()
+
+    # get data
+    df = pd.DataFrame()
+    inputFieldXPath = "//input[@id='stzh-input-0']"
+    submitXPath = (
+        "//button[contains(@class, 'stzh-button') and .//*[text()='Abfragen']]"
     )
-    df_loc = pd.read_html(StringIO(driver.page_source))[0]
+    for length in LENGTHS:
+        d = driver.find_element(By.XPATH, inputFieldXPath)
+        d.clear()
+        d.send_keys(length)
+        driver.find_element(By.XPATH, submitXPath).click()
+        time.sleep(0.1)  # seems this can otherwise be too fast
+        element = WebDriverWait(driver, 20).until(
+            EC.visibility_of_element_located((By.XPATH, "//div[@class='stzh-table']"))
+        )
+        dfLoc = pd.read_html(StringIO(driver.page_source))[0]
 
-    df = pd.concat((df, df_loc), ignore_index=True)
+        df = pd.concat((df, dfLoc), ignore_index=True)
+
+    df[["Breite", "Laenge"]] = df["Grösse (Breite / Länge) in cm"].str.split(
+        "/", expand=True
+    )
+    df = df.drop(["Grösse (Breite / Länge) in cm"], axis=1)
+
+    dfCurrent = readAndDecrypt(KEY)
+    dfAll = pd.concat((dfCurrent, df), ignore_index=True).drop_duplicates()
+
+    # store (locally) a copy as csv, is gitignored
+    dfAll.to_csv(
+        f"liegeplatzData_{pd.Timestamp.now().date().isoformat()}.csv", index=False
+    )
+
+    encryptAndSave(dfAll)
