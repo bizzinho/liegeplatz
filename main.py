@@ -74,10 +74,12 @@ def encryptAndSave(df: pd.DataFrame, KEY: Fernet | None = None):
         f.write(KEY.encrypt(df.to_csv(index=False).encode()))
 
 
-if __name__ == "__main__":
+def getData() -> pd.DataFrame:
+    """Get data from ZH website.
 
-    KEY = getKey()
-
+    Returns:
+        pd.DataFrame: Latest waiting times.
+    """
     driver = webdriver.Firefox()
     driver.implicitly_wait(10)
     driver.get(URL)
@@ -103,7 +105,7 @@ if __name__ == "__main__":
         d.send_keys(length)
         driver.find_element(By.XPATH, submitXPath).click()
         time.sleep(0.1)  # seems this can otherwise be too fast
-        element = WebDriverWait(driver, 20).until(
+        WebDriverWait(driver, 20).until(
             EC.visibility_of_element_located((By.XPATH, "//div[@class='stzh-table']"))
         )
         dfLoc = pd.read_html(StringIO(driver.page_source))[0]
@@ -114,6 +116,13 @@ if __name__ == "__main__":
         "/", expand=True
     )
     df = df.drop(["Grösse (Breite / Länge) in cm"], axis=1)
+
+
+if __name__ == "__main__":
+
+    KEY = getKey()
+
+    df = getData(KEY)
 
     dfCurrent = readAndDecrypt(KEY)
     dfAll = pd.concat((dfCurrent, df), ignore_index=True).drop_duplicates()
