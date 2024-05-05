@@ -14,7 +14,8 @@ URL = "https://www.stadt-zuerich.ch/appl/besys2-ew/hafen/warteliste"
 USER = os.environ["USER"]
 PWD = os.environ["PWD"]
 # lengths to check
-LENGTHS = tuple(range(120, 320, 20))
+# higher resolution around target of 250
+LENGTHS = set(range(120, 320, 20)).union(range(225, 280, 5)).union(range(245, 255))
 
 
 def getKey() -> Fernet:
