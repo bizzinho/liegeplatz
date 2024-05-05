@@ -81,8 +81,12 @@ def getData() -> pd.DataFrame:
         pd.DataFrame: Latest waiting times.
     """
     driver = webdriver.Firefox()
-    driver.implicitly_wait(10)
+    driver.implicitly_wait(20)
     driver.get(URL)
+
+    WebDriverWait(driver, 20).until(
+        EC.visibility_of_element_located((By.XPATH, "//input[@id='userInputField']"))
+    )
 
     userElem = driver.find_element(By.XPATH, "//input[@id='userInputField']")
     pwElem = driver.find_element(By.XPATH, "//input[@id='pwInputField']")
@@ -116,16 +120,26 @@ def getData() -> pd.DataFrame:
         "/", expand=True
     )
     df = df.drop(["Grösse (Breite / Länge) in cm"], axis=1)
+    for col in ["Anmeldung", "Zuteilung"]:
+        df[col] = pd.to_datetime(df[col], dayfirst=True)
+
+    df = df.sort_values("Zuteilung", ignore_index=True, ascending=False)
+
+    return df
 
 
 if __name__ == "__main__":
 
     KEY = getKey()
 
-    df = getData(KEY)
+    df = getData()
 
     dfCurrent = readAndDecrypt(KEY)
-    dfAll = pd.concat((dfCurrent, df), ignore_index=True).drop_duplicates()
+    dfAll = (
+        pd.concat((dfCurrent, df), ignore_index=True)
+        .drop_duplicates()
+        .sort_values("Zuteilung", ignore_index=True, ascending=False)
+    )
 
     # store (locally) a copy as csv, is gitignored
     dfAll.to_csv(
