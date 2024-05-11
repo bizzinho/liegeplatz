@@ -49,7 +49,7 @@ def readAndDecrypt(KEY: Fernet | None = None) -> pd.DataFrame:
         with open("liegePlatzData.encrypted", "rb") as f:
             df = pd.read_csv(BytesIO(KEY.decrypt(f.read())))
             for col in ["Anmeldung", "Zuteilung"]:
-                df[col] = pd.to_datetime(df[col], dayfirst=True)
+                df[col] = pd.to_datetime(df[col])
 
     except FileNotFoundError:
         # return empy df
@@ -126,6 +126,10 @@ def getData() -> pd.DataFrame:
     df = df.sort_values("Zuteilung", ignore_index=True, ascending=False)
 
     return df
+
+
+def _calcDuration(anmeldung: pd.Series, zuteilung: pd.Series) -> pd.Series:
+    return (zuteilung - anmeldung).dt.days / 365.25
 
 
 if __name__ == "__main__":
