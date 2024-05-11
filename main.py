@@ -138,16 +138,24 @@ def _calcDuration(anmeldung: pd.Series, zuteilung: pd.Series) -> pd.Series:
     return (zuteilung - anmeldung).dt.days / 365.25
 
 
-def _calcType(anlage: pd.Series) -> pd.Series:
-    mapfun = lambda x: re.sub(
-        r".*(Hafen|Trockenplatz|Bojenfeld|Steganlage|Bauschänzli|BV).*", "\\1", x
+def _mapType(anlagenStr: str) -> str:
+    anlagenTyp = re.sub(
+        r".*(Hafen|Trockenplatz|Bojenfeld|Steganlage|Bauschänzli|BV).*",
+        "\\1",
+        anlagenStr,
     )
 
-    return anlage.map(mapfun)
+    return anlagenTyp
 
 
-# def _calcRegion(anlage: pd.Series) -> pd.Series:
-#     mapfun = lambda x:
+def _calcType(anlage: pd.Series) -> pd.Series:
+
+    typ = anlage.map(_mapType)
+
+    typ = typ.str.replace("Bauschänzli", "Steganlage")
+    typ = typ.str.replace("BV", "Bojenfeld")  # presumably buoys
+
+    return typ
 
 
 def _mapRegion(anlagenStr: str) -> str:
@@ -172,6 +180,16 @@ def _mapRegion(anlagenStr: str) -> str:
         return "Silberküste"
     elif any(l in anlagenStr for l in fluss):
         return "Fluss"
+
+
+def _calcRegion(anlage: pd.Series) -> pd.Series:
+    return anlage.map(_mapRegion)
+
+
+def enhanceFeatures(df):
+    df["Anlagentyp"] = _calcType(df["Anlage"])
+    df["Region"] = _calcRegion(df["Anlage"])
+    df["Dauer"] = _calcDuration(df["Anmeldung"], df["Zuteilung"])
 
 
 if __name__ == "__main__":
