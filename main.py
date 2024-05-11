@@ -7,7 +7,11 @@ from io import StringIO, BytesIO
 import pandas as pd
 from cryptography.fernet import Fernet
 import time
+import re
 
+# TODO
+# - map locations to approx regions
+# - consolidate BV and Bauschaenzli into one of other catgories
 
 URL = "https://www.stadt-zuerich.ch/appl/besys2-ew/hafen/warteliste"
 
@@ -84,7 +88,7 @@ def getData() -> pd.DataFrame:
     driver.implicitly_wait(20)
     driver.get(URL)
 
-    WebDriverWait(driver, 20).until(
+    WebDriverWait(driver, 30).until(
         EC.visibility_of_element_located((By.XPATH, "//input[@id='userInputField']"))
     )
 
@@ -122,6 +126,8 @@ def getData() -> pd.DataFrame:
     df = df.drop(["Grösse (Breite / Länge) in cm"], axis=1)
     for col in ["Anmeldung", "Zuteilung"]:
         df[col] = pd.to_datetime(df[col], dayfirst=True)
+    for col in ["Breite", "Laenge"]:
+        df[col] = df[col].astype(int)
 
     df = df.sort_values("Zuteilung", ignore_index=True, ascending=False)
 
@@ -130,6 +136,42 @@ def getData() -> pd.DataFrame:
 
 def _calcDuration(anmeldung: pd.Series, zuteilung: pd.Series) -> pd.Series:
     return (zuteilung - anmeldung).dt.days / 365.25
+
+
+def _calcType(anlage: pd.Series) -> pd.Series:
+    mapfun = lambda x: re.sub(
+        r".*(Hafen|Trockenplatz|Bojenfeld|Steganlage|Bauschänzli|BV).*", "\\1", x
+    )
+
+    return anlage.map(mapfun)
+
+
+# def _calcRegion(anlage: pd.Series) -> pd.Series:
+#     mapfun = lambda x:
+
+
+def _mapRegion(anlagenStr: str) -> str:
+
+    gold = ("Tiefenbrunnen", "Riesbach", "Rytz")
+    # from south to north
+    silver = (
+        "Camping",
+        "Wollishofen",
+        "Kibag",
+        "Mythenquai",
+        "Enge",
+        "Standard",  # where is this standard??
+        "Arboretum",
+        "Guisan",
+    )
+    fluss = ("Quaibrücke", "Bauschänzli", "Schanzengraben", "Limmatquai")
+
+    if any(g in anlagenStr for g in gold):
+        return "Goldküste"
+    elif any(s in anlagenStr for s in silver):
+        return "Silberküste"
+    elif any(l in anlagenStr for l in fluss):
+        return "Fluss"
 
 
 if __name__ == "__main__":
