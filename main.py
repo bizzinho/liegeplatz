@@ -15,11 +15,13 @@ import re
 
 URL = "https://www.stadt-zuerich.ch/appl/besys2-ew/hafen/warteliste"
 
-USER = os.environ["USER"]
-PWD = os.environ["PWD"]
+USER = os.environ["MYUSER"]
+PWD = os.environ["MYPASS"]
 # lengths to check
 # higher resolution around target of 250
-LENGTHS = set(range(120, 320, 20)).union(range(225, 280, 5)).union(range(245, 255))
+LENGTHS = sorted(
+    set(range(120, 320, 20)).union(range(225, 280, 5)).union(range(245, 255))
+)
 
 
 def getKey() -> Fernet:
@@ -111,6 +113,7 @@ def getData() -> pd.DataFrame:
         d = driver.find_element(By.XPATH, inputFieldXPath)
         d.clear()
         d.send_keys(length)
+        time.sleep(0.1)
         driver.find_element(By.XPATH, submitXPath).click()
         time.sleep(0.1)  # seems this can otherwise be too fast
         WebDriverWait(driver, 20).until(
@@ -129,7 +132,9 @@ def getData() -> pd.DataFrame:
     for col in ["Breite", "Laenge"]:
         df[col] = df[col].astype(int)
 
-    df = df.sort_values("Zuteilung", ignore_index=True, ascending=False)
+    df = df.sort_values(
+        "Zuteilung", ignore_index=True, ascending=False
+    ).drop_duplicates()
 
     return df
 
