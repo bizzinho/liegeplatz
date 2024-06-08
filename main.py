@@ -9,10 +9,6 @@ from cryptography.fernet import Fernet
 import time
 import re
 
-# TODO
-# - map locations to approx regions
-# - consolidate BV and Bauschaenzli into one of other catgories
-
 URL = "https://www.stadt-zuerich.ch/appl/besys2-ew/hafen/warteliste"
 
 USER = os.environ["MYUSER"]
