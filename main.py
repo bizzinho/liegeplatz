@@ -87,11 +87,11 @@ def getData() -> pd.DataFrame:
     driver.get(URL)
 
     WebDriverWait(driver, 30).until(
-        EC.visibility_of_element_located((By.XPATH, "//input[@id='userInputField']"))
+        EC.visibility_of_element_located((By.XPATH, "//input[@id='stzh-input-0']"))
     )
 
-    userElem = driver.find_element(By.XPATH, "//input[@id='userInputField']")
-    pwElem = driver.find_element(By.XPATH, "//input[@id='pwInputField']")
+    userElem = driver.find_element(By.XPATH, "//input[@id='stzh-input-0']")
+    pwElem = driver.find_element(By.XPATH, "//input[@id='stzh-input-1']")
 
     userElem.send_keys(USER)
     pwElem.send_keys(PWD)
